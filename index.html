@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Etymologizer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #E8EAE6;
+    --surface: #F4F5F2;
+    --ink: #1F2A36;
+    --muted: #5A6470;
+    --rule: #C5CAC4;
+    --accent: #2F6F62;
+    --accent-ink: #FFFFFF;
+    --error: #9A3A2E;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --bg: #151B21;
+      --surface: #1D252D;
+      --ink: #E3E6E2;
+      --muted: #9AA3AC;
+      --rule: #34404B;
+      --accent: #7BB8A9;
+      --accent-ink: #10201C;
+      --error: #E39A8C;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Work Sans", system-ui, sans-serif;
+    line-height: 1.55;
+  }
+  main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 4rem;
+  }
+  h1 {
+    font-family: "Young Serif", Georgia, serif;
+    font-weight: 400;
+    font-size: clamp(2.4rem, 6vw, 4rem);
+    line-height: 1;
+    margin: 0 0 0.75rem;
+    letter-spacing: -0.01em;
+  }
+  .intro { color: var(--muted); max-width: 46ch; margin: 0 0 2.5rem; }
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    gap: 3rem;
+    align-items: start;
+  }
+  @media (max-width: 800px) { .layout { grid-template-columns: 1fr; gap: 2rem; } }
+
+  .photo-panel { position: sticky; top: 1.5rem; }
+  @media (max-width: 800px) { .photo-panel { position: static; } }
+  .dropzone {
+    display: block;
+    border: 1.5px dashed var(--rule);
+    background: var(--surface);
+    padding: 2rem 1.25rem;
+    text-align: center;
+    cursor: pointer;
+    color: var(--muted);
+  }
+  .dropzone:hover, .dropzone:focus-within { border-color: var(--accent); }
+  .dropzone input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  .preview { display: block; width: 100%; max-width: 100%; margin-top: 1rem; }
+  .preview[hidden] { display: none; }
+  button {
+    margin-top: 1rem;
+    width: 100%;
+    padding: 0.85rem 1rem;
+    border: 0;
+    background: var(--accent);
+    color: var(--accent-ink);
+    font: 600 1rem "Work Sans", system-ui, sans-serif;
+    cursor: pointer;
+  }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  button:focus-visible, .dropzone:focus-within { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+  .status { color: var(--muted); margin: 0; }
+  .status.error { color: var(--error); }
+  .summary {
+    font-family: "Young Serif", Georgia, serif;
+    font-size: 1.45rem;
+    line-height: 1.4;
+    margin: 0 0 2rem;
+    max-width: 38ch;
+  }
+  .influence { border-top: 1px solid var(--rule); padding: 1.5rem 0; }
+  .influence-head { display: flex; justify-content: space-between; gap: 1rem; align-items: baseline; }
+  .influence h2 {
+    font-family: "Young Serif", Georgia, serif;
+    font-weight: 400;
+    font-size: 1.35rem;
+    margin: 0;
+  }
+  .origin { color: var(--muted); margin: 0.2rem 0 0.9rem; font-size: 0.95rem; }
+  .explanation { margin: 0 0 0.9rem; max-width: 62ch; }
+  .evidence { margin: 0; padding-left: 1.1rem; color: var(--muted); max-width: 62ch; }
+  .evidence li { margin-bottom: 0.3rem; }
+
+  /* Confidence drawn as three small columns: more standing columns, more certainty */
+  .confidence { display: flex; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+  .confidence span { width: 7px; height: 22px; border: 1.5px solid var(--accent); }
+  .confidence span.filled { background: var(--accent); }
+  .confidence-label { font-size: 0.8rem; color: var(--muted); margin-left: 0.4rem; }
+
+  .caveats { border-top: 1px solid var(--rule); padding-top: 1.5rem; color: var(--muted); max-width: 62ch; }
+  .caveats h2 { font-family: "Young Serif", Georgia, serif; font-weight: 400; font-size: 1.1rem; color: var(--ink); margin: 0 0 0.4rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Etymologizer</h1>
+  <p class="intro">Upload a photo of a building to trace the architectural styles it descends from.</p>
+
+  <div class="layout">
+    <section class="photo-panel">
+      <label class="dropzone">
+        <span id="dropzone-text">Choose a photo of a building</span>
+        <input type="file" id="photo-input" accept="image/jpeg,image/png,image/webp,image/gif">
+      </label>
+      <img id="preview" class="preview" alt="The building you chose" hidden>
+      <button id="analyze-button" disabled>Trace influences</button>
+    </section>
+
+    <section id="results" aria-live="polite">
+      <p class="status">Your analysis will appear here.</p>
+    </section>
+  </div>
+</main>
+
+<script>
+  const input = document.getElementById("photo-input");
+  const preview = document.getElementById("preview");
+  const button = document.getElementById("analyze-button");
+  const results = document.getElementById("results");
+  const dropzoneText = document.getElementById("dropzone-text");
+
+  // Small helper: create an element with a class and text
+  function el(tag, className, text) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text) node.textContent = text;
+    return node;
+  }
+
+  function showStatus(message, isError) {
+    results.replaceChildren(el("p", isError ? "status error" : "status", message));
+  }
+
+  input.addEventListener("change", () => {
+    const file = input.files[0];
+    if (!file) return;
+    preview.src = URL.createObjectURL(file);
+    preview.hidden = false;
+    dropzoneText.textContent = "Choose a different photo";
+    button.disabled = false;
+  });
+
+  button.addEventListener("click", async () => {
+    const file = input.files[0];
+    if (!file) return;
+
+    button.disabled = true;
+    showStatus("Reading the building… this takes about half a minute.");
+
+    const formData = new FormData();
+    formData.append("photo", file);
+
+    try {
+      const response = await fetch("/analyze", { method: "POST", body: formData });
+      const data = await response.json();
+      if (!response.ok) {
+        showStatus(data.error || "Something went wrong. Try again.", true);
+      } else {
+        renderResult(data);
+      }
+    } catch (err) {
+      showStatus("Couldn't reach the server. Check that app.py is still running in the terminal.", true);
+    } finally {
+      button.disabled = false;
+    }
+  });
+
+  function renderConfidence(level) {
+    const filledCount = { high: 3, medium: 2, low: 1 }[level] || 0;
+    const wrap = el("div", "confidence");
+    wrap.setAttribute("aria-label", `${level} confidence`);
+    for (let i = 0; i < 3; i++) {
+      wrap.appendChild(el("span", i < filledCount ? "filled" : ""));
+    }
+    wrap.appendChild(el("span", "confidence-label", `${level} confidence`));
+    wrap.lastChild.style.cssText = "width:auto;height:auto;border:0;";
+    return wrap;
+  }
+
+  function renderResult(data) {
+    const nodes = [el("p", "summary", data.summary)];
+
+    for (const item of data.influences) {
+      const block = el("article", "influence");
+      const head = el("div", "influence-head");
+      head.append(el("h2", "", item.style), renderConfidence(item.confidence));
+      block.append(head, el("p", "origin", item.origin), el("p", "explanation", item.explanation));
+
+      const list = el("ul", "evidence");
+      for (const feature of item.evidence) list.appendChild(el("li", "", feature));
+      block.appendChild(list);
+      nodes.push(block);
+    }
+
+    const caveats = el("div", "caveats");
+    caveats.append(el("h2", "", "What the photo can't show"), el("p", "", data.caveats));
+    nodes.push(caveats);
+
+    results.replaceChildren(...nodes);
+  }
+</script>
+</body>
+</html>

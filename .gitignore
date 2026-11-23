@@ -1,0 +1,6 @@
+.env
+.venv/
+__pycache__/
+result.json
+building.jpg
+.DS_Store
