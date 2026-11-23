@@ -1,12 +1,17 @@
 import base64
 import json
-from flask import Flask, request, jsonify, send_file
+import os
+import secrets
+from flask import Flask, request, jsonify, send_file, Response
 from dotenv import load_dotenv
 import anthropic
 
 load_dotenv()
 client = anthropic.Anthropic()
 app = Flask(__name__)
+
+# If APP_PASSWORD is set, the whole site requires it. If not (like on your Mac), no password is asked.
+APP_PASSWORD = os.environ.get("APP_PASSWORD")
 
 SYSTEM_PROMPT = """You are an architectural historian who traces the lineage of buildings from photographs.
 
@@ -30,6 +35,20 @@ Respond with ONLY valid JSON, no other text, in exactly this shape:
 }"""
 
 SUPPORTED_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+
+
+@app.before_request
+def require_password():
+    """Runs before every request. Blocks anyone without the password."""
+    if not APP_PASSWORD:
+        return
+    auth = request.authorization
+    if auth is None or not secrets.compare_digest(auth.password or "", APP_PASSWORD):
+        return Response(
+            "This site requires a password.",
+            401,
+            {"WWW-Authenticate": 'Basic realm="Etymologizer"'},
+        )
 
 
 def analyze_image(image_bytes, media_type):
